@@ -3,23 +3,10 @@ library(gratia)
 library(tidyverse)
 library(patchwork)
 
-df <- readxl::read_xlsx("dat/test_final.xlsx") %>%
+df <- readxl::read_xlsx("data/visitors_dataset_hisorical.xlsx") %>%
         mutate(rel_tourists = 100*(tourists/max(tourists)), 
                rel_biomass = 100*(biomass/max(biomass)))
 
-p1 <- ggplot(df, aes(x=biomass, y=tourists)) +
-        geom_point() +
-        geom_smooth(method = "glm", se = F, col = "black") +
-        labs(x="Fish biomass (ton/ha)", y="Number of visitors") +
-        xlim(0,5) +
-        ylim(0,5000) +
-        theme_bw()
-p1
-
-m1 <- glm(tourists ~ biomass, data = df)
-
-summary(m1)
-report::report(m1)
 
 m2 <- gam(tourists_rate ~ s(biomass_rate, bs = "tp", k = 5), data = df)
 
@@ -27,17 +14,7 @@ summary(m2)
 
 report::report(m2)
 
-draw(m2, residuals = T)
-
-
-m2 <- gam(tourists_rate ~ s(biomass_rate, bs = "tp", k = 5) , data = df)
-
-summary(m2)
-
-
-report::report(m2)
-
-draw(m2, residuals = T)
+draw(m2, residuals = T) 
 
 p2 <- ggplot(df, aes(x=biomass_rate, y=tourists_rate)) +
         geom_point() +
@@ -54,7 +31,7 @@ ggplot(predictions, aes(x=biomass_rate, y=fit)) +
 
 
 newdat <- data.frame(
-        biomass_rate = seq(-150,150, by=1))
+        biomass_rate = seq(-100,150, by=1))
 
 
 predval <- predict(m2,interval = 'confidence',se.fit = T, 
@@ -73,23 +50,12 @@ p3 <- final |>
         geom_line(linewidth = 1) +
         geom_ribbon(aes(ymin=fit-se.fit, ymax=fit+se.fit), alpha=.2) +
         labs(x="Fish biomass change rate (%)", y="Number of visitors change rate (%)") +
-        xlim(c(-150, 150)) +
         theme_bw()
 
 p3
+ggsave("figs/Final_biomass_rel.png", dpi = 600, height = 4, width = 4)
 
 
-
-
-
-
-m2 <- gam(tourists_rate ~ s(biomass_rate, bs = "tp", k = 5) + year, data = df)
-
-summary(m2)
-
-report::report(m2)
-
-draw(m2, residuals = T)
 
 predictions <- cbind(df, as.data.frame(predict(m2, se.fit = T)))
 
@@ -99,8 +65,8 @@ ggplot(predictions, aes(x=biomass_rate, y=fit)) +
 
 
 newdat <- data.frame(
-        biomass_rate = seq(0,100, by=9), 
-        year = seq(2023,2034, by = 1))
+        biomass_rate = seq(0,100, by=10), 
+        year = seq(2023,2033, by = 1))
 
 
 predval <- predict(m2,interval = 'confidence',se.fit = T,
@@ -127,9 +93,7 @@ p4 <- final |>
 
 p4
 
-p3 
 
-ggsave("figs/Final_biomass_rel.png", dpi = 600, height = 4, width = 4)
 
 
 
@@ -139,7 +103,7 @@ final
 
 
 
-eco <- readxl::read_xlsx("dat/da_me_economic_value_scuba1.xlsx") %>% 
+eco <- readxl::read_xlsx("data/da_me_economic_value_scuba1.xlsx") %>% 
         janitor::clean_names()
 
 
@@ -164,11 +128,8 @@ results_table <- eco %>%
                   p_costs_Q3 = quantile(p_costs, probs = .75), 
                   n_ops_survey = n_distinct(respondent_id)) %>% 
         mutate(revenues_median = price_median*buzos_median*52,
-               net_revenues_median = revenues_median - (revenues_median * (p_costs_median/100)),
                revenues_Q2 = price_Q2*buzos_Q2*52, 
-               net_revenues_Q2 = revenues_Q2 - (revenues_Q2 * (p_costs_Q2/100)),
-               revenues_Q3 = price_Q3*buzos_Q3*52,
-               net_revenues_Q3 = revenues_Q3 - (revenues_Q3 * (p_costs_Q3/100))) |> 
+               revenues_Q3 = price_Q3*buzos_Q3*52) |> 
         select(locality, region, revenues_median, revenues_Q2, revenues_Q3)
 
 
@@ -214,26 +175,18 @@ p5 <- final |>
         ggplot(aes(x = year, y = est/1000,  col = pl)) +
         geom_ribbon(aes(ymin=(est-Q2/2)/1000, ymax = (est+Q3/2)/1000), alpha=.3, fill = NA, linetype = 2, linewidth = .5) +
         geom_line(, linewidth = 1) +
-        scale_x_continuous(breaks = seq(2019, 2030, by = 1)) +
+        scale_x_continuous(breaks = seq(2019, 2034, by = 1)) +
         labs(x="Year", y="Annual increase rate in revenues (in thousands USD)", color = "Protection level") +
         theme_bw() +
         scale_color_manual(values = c("#994F00", "#006CD1")) +
         theme(axis.text.x = element_text(angle = 90))
 
-p4 + p5 +
+p3 + p5 +
         plot_annotation(tag_levels = "A") +
         plot_layout(guides = "collect") & theme(legend.position = "bottom")
 
 
 ggsave('figs/final_figure_biomass_model.png', dpi = 600, height = 6, width = 8)
-
-
-p5 +
-        plot_layout(guides = "collect") & theme(legend.position = "bottom")
-
-
-ggsave('figs/final_figure_biomass_model.png', dpi = 600, height = 6, width = 6)
-
 
 
 
